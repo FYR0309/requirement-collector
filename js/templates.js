@@ -55,6 +55,46 @@
     },
   ];
 
+  /* ===== 模块补充说明（每个模块末尾都有一个自由发挥区） ===== */
+  var MODULE_SUPPLEMENTS = [
+    {
+      id: 'basicInfo_supplement', module: 'basicInfo', type: 'textarea', order: 99,
+      label: '📝 补充说明', required: false, fullOnly: false, maxLength: 500,
+      placeholder: '如果以上问题没有覆盖到您想表达的内容，请在此自由补充...\n\n比如：项目特殊背景、相关联系人、已有的一些想法等',
+      hint: '选填。有任何额外想说的都可以写在这里，越详细越好。',
+    },
+    {
+      id: 'existingProcess_supplement', module: 'existingProcess', type: 'textarea', order: 99,
+      label: '📝 补充说明', required: false, fullOnly: false, maxLength: 500,
+      placeholder: '如果以上问题没有覆盖到您想表达的内容，请在此自由补充...\n\n比如：其他涉及的流程细节、特殊处理方式、历史遗留问题等',
+      hint: '选填。流程中任何没问到但你觉得重要的细节都可以写。',
+    },
+    {
+      id: 'automationGoal_supplement', module: 'automationGoal', type: 'textarea', order: 99,
+      label: '📝 补充说明', required: false, fullOnly: false, maxLength: 500,
+      placeholder: '如果以上问题没有覆盖到您想表达的内容，请在此自由补充...\n\n比如：长远的自动化规划、想参考的其他系统、额外的期望等',
+      hint: '选填。对未来系统有任何期望都可以写。',
+    },
+    {
+      id: 'dataSpec_supplement', module: 'dataSpec', type: 'textarea', order: 99,
+      label: '📝 补充说明', required: false, fullOnly: false, maxLength: 500,
+      placeholder: '如果以上问题没有覆盖到您想表达的内容，请在此自由补充...\n\n比如：数据样例、报表模板样式、对接系统的具体版本等',
+      hint: '选填。如果能提供数据样例或截图会非常有帮助。',
+    },
+    {
+      id: 'constraints_supplement', module: 'constraints', type: 'textarea', order: 99,
+      label: '📝 补充说明', required: false, fullOnly: false, maxLength: 500,
+      placeholder: '如果以上问题没有覆盖到您想表达的内容，请在此自由补充...\n\n比如：公司IT政策细节、审批流程要求、合规审计要求等',
+      hint: '选填。任何限制条件都可能影响方案设计，请尽量详细。',
+    },
+    {
+      id: 'specialScenarios_supplement', module: 'specialScenarios', type: 'textarea', order: 99,
+      label: '📝 补充说明', required: false, fullOnly: false, maxLength: 500,
+      placeholder: '如果以上问题没有覆盖到您想表达的内容，请在此自由补充...\n\n还有任何其他想说的，不管是需求、疑问、还是想法，都欢迎写在这里',
+      hint: '选填。这是最后的自由发挥空间，什么都可以写。',
+    },
+  ];
+
   /* ================================================================
      财务行业特有字段（覆盖6大模块）
      ================================================================ */
@@ -375,8 +415,8 @@
   function initTemplates() {
     if (Object.keys(ALL_TEMPLATES).length > 0) return; // 只初始化一次
 
-    // 财务行业（合并公共字段 + 财务特有字段）
-    var finFields = COMMON_FIELDS.concat(FINANCE_FIELDS);
+    // 财务行业（合并：公共字段 + 财务特有字段 + 模块补充说明）
+    var finFields = COMMON_FIELDS.concat(FINANCE_FIELDS, MODULE_SUPPLEMENTS);
     ALL_TEMPLATES['finance-simple'] = buildTemplate('finance', 'simple', finFields);
     ALL_TEMPLATES['finance-full'] = buildTemplate('finance', 'full', finFields);
 
