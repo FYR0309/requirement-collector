@@ -66,10 +66,18 @@
   <!-- ===== 底部导航栏 ===== -->
   <footer class="app-footer">
     <div class="footer-left">
+      <button class="btn btn-outline" id="btnImport" title="导入之前导出的JSON结果文件">
+        📥 导入结果
+      </button>
+      <button class="btn btn-outline" id="btnExport" title="导出当前填写结果，发给对方导入查看">
+        📤 导出结果
+      </button>
       <button class="btn btn-outline" id="btnReset" title="清空所有数据，重新开始">
         🔄 重新开始
       </button>
     </div>
+    <!-- 隐藏的文件选择器，用于导入 -->
+    <input type="file" id="importFileInput" accept=".json" style="display:none;">
     <div class="footer-center">
       <span class="save-indicator" id="saveIndicator">💾 已自动保存</span>
     </div>

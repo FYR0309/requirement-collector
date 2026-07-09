@@ -59,6 +59,9 @@
     els.btnPrev = document.getElementById('btnPrev');
     els.btnNext = document.getElementById('btnNext');
     els.btnReset = document.getElementById('btnReset');
+    els.btnImport = document.getElementById('btnImport');
+    els.btnExport = document.getElementById('btnExport');
+    els.importFileInput = document.getElementById('importFileInput');
     els.saveIndicator = document.getElementById('saveIndicator');
     els.modalOverlay = document.getElementById('modalOverlay');
     els.modalTitle = document.getElementById('modalTitle');
@@ -74,20 +77,79 @@
     els.btnPrev.addEventListener('click', handlePrev);
     els.btnNext.addEventListener('click', handleNext);
     els.btnReset.addEventListener('click', handleReset);
+    els.btnExport.addEventListener('click', exportState);
+    els.btnImport.addEventListener('click', function () { els.importFileInput.click(); });
+    els.importFileInput.addEventListener('change', handleFileImport);
     els.modalCancel.addEventListener('click', closeModal);
     els.modalOverlay.addEventListener('click', function (e) {
       if (e.target === els.modalOverlay) closeModal();
     });
 
-    // 首次渲染
+    // 检查是否需要恢复提示（有模板 且 至少填写了1个字段）
+    var filledCount = Object.keys(appState.formData).filter(function (k) {
+      var v = appState.formData[k];
+      return v !== undefined && v !== null && String(v).trim() !== '';
+    }).length;
+    var hasData = appState.lastSaved && appState.selectedTemplateId && filledCount > 0;
+    if (hasData) {
+      showRecoveryPrompt();
+    } else {
+      // 无有效数据，清掉旧状态，直接开始
+      if (appState.lastSaved) {
+        App.db.clearState();
+        appState = App.db.loadState();
+      }
+      finishInit();
+    }
+  }
+
+  /**
+   * 完成初始化渲染（在恢复提示确认后调用）
+   */
+  function finishInit() {
     renderStepIndicator();
     renderCurrentStep();
     updateNavButtons();
-
-    // 如果恢复的状态有 lastSaved，显示
     if (appState.lastSaved) {
       showSaveTime(appState.lastSaved);
     }
+  }
+
+  /**
+   * 显示恢复提示弹窗
+   */
+  function showRecoveryPrompt() {
+    var time = new Date(appState.lastSaved);
+    var timeStr = time.toLocaleString('zh-CN', {
+      month: 'numeric', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+    var templateName = '';
+    if (App.templates && appState.selectedTemplateId) {
+      var t = App.templates.getById(appState.selectedTemplateId);
+      templateName = t ? t.name : appState.selectedTemplateId;
+    }
+    var filledCount = Object.keys(appState.formData).filter(function (k) {
+      var v = appState.formData[k];
+      return v !== undefined && v !== null && String(v).trim() !== '';
+    }).length;
+
+    showModal({
+      title: '📝 检测到上次填写的数据',
+      message: '上次填写时间：' + timeStr + '\n模板：' + templateName + '\n已填写字段：' + filledCount + ' 项\n\n是否需要继续编辑？',
+      confirmText: '✅ 继续编辑',
+      cancelText: '🔄 重新开始',
+      onConfirm: function () {
+        finishInit();
+        showToast('已恢复上次数据');
+      },
+      onCancel: function () {
+        App.db.clearState();
+        appState = App.db.loadState();
+        finishInit();
+        showToast('已清空，重新开始');
+      },
+    });
   }
 
   // 页面加载完成后初始化
@@ -367,7 +429,7 @@
   function handleReset() {
     showModal({
       title: '确认重新开始',
-      message: '将清空所有已填写的数据，此操作无法撤销。\n\n如需保留当前数据，请先使用备份功能。',
+      message: '将清空所有已填写的数据，此操作无法撤销。\n\n如需保留当前数据，请先点击「📤 导出结果」保存到本地。',
       confirmText: '确认清空',
       onConfirm: function () {
         App.db.clearState();
@@ -378,6 +440,94 @@
         showToast('已清空所有数据，重新开始');
       },
     });
+  }
+
+  /* ===== 导出/导入 ===== */
+
+  /**
+   * 导出当前状态为 JSON 文件下载
+   */
+  function exportState() {
+    if (!appState.selectedTemplateId) {
+      showToast('⚠️ 请先选择模板并填写内容后再导出');
+      return;
+    }
+
+    var templateName = '';
+    if (App.templates) {
+      var t = App.templates.getById(appState.selectedTemplateId);
+      templateName = t ? t.name : appState.selectedTemplateId;
+    }
+
+    // 构建导出数据
+    var exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      templateId: appState.selectedTemplateId,
+      templateName: templateName,
+      formData: appState.formData,
+      completionMap: appState.completionMap,
+    };
+
+    // 生成文件名
+    var projectName = appState.formData.projectName || appState.formData.companyName || '需求采集';
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var filename = '需求采集_' + projectName + '_' + dateStr + '.json';
+
+    // 下载
+    App.export_.downloadAsFile(
+      JSON.stringify(exportData, null, 2),
+      filename,
+      'application/json'
+    );
+
+    showToast('✅ 已导出：' + filename);
+  }
+
+  /**
+   * 处理导入文件
+   */
+  function handleFileImport(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var importData = JSON.parse(e.target.result);
+
+        // 校验数据结构
+        if (!importData.formData || !importData.templateId) {
+          throw new Error('文件格式不正确，缺少必要数据');
+        }
+
+        // 校验模板是否存在
+        if (App.templates && !App.templates.getById(importData.templateId)) {
+          showToast('⚠️ 模板「' + (importData.templateName || importData.templateId) + '」在当前版本中不存在，将使用默认显示');
+        }
+
+        // 恢复状态
+        appState.selectedTemplateId = importData.templateId;
+        appState.formData = importData.formData || {};
+        appState.completionMap = importData.completionMap || {};
+
+        // 跳到预览页让用户看到导入的内容
+        appState.currentStep = 'preview';
+        renderStepIndicator();
+        renderCurrentStep();
+        updateNavButtons();
+        autoSave();
+
+        showToast('✅ 已导入：' + (importData.templateName || '') + '（' + Object.keys(importData.formData).length + ' 个字段）');
+      } catch (err) {
+        showToast('❌ 导入失败：' + err.message);
+        console.error('导入失败', err);
+      }
+    };
+    reader.readAsText(file);
+
+    // 清空文件选择器，允许重复导入同一个文件
+    event.target.value = '';
   }
 
   /* ===== 模板选择回调 ===== */
@@ -435,11 +585,16 @@
     els.modalMessage.textContent = opts.message;
     els.modalConfirm.textContent = opts.confirmText || '确认';
     els.modalConfirm.className = 'btn btn-danger';
+    els.modalCancel.textContent = opts.cancelText || '取消';
     els.modalOverlay.style.display = 'flex';
 
     els.modalConfirm.onclick = function () {
       closeModal();
       if (opts.onConfirm) opts.onConfirm();
+    };
+    els.modalCancel.onclick = function () {
+      closeModal();
+      if (opts.onCancel) opts.onCancel();
     };
   }
 

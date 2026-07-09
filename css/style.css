@@ -490,6 +490,12 @@ textarea {
   flex-shrink: 0;
 }
 
+.footer-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .save-indicator {
   font-size: 0.82rem;
   color: var(--color-success);
